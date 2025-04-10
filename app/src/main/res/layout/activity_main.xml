@@ -9,11 +9,9 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-
-    <Button
-        android:id="@+id/btnTest"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="测试" />
+    <fragment
+        android:id="@+id/placeFragment"
+        android:name="com.sunchen.sunnyweather.ui.place.PlaceFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </LinearLayout>

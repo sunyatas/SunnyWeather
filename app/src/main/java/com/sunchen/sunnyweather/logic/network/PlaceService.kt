@@ -17,5 +17,8 @@ import retrofit2.http.Query
 interface PlaceService {
     // https://api.caiyunapp.com/v2/place?query=上海&token=vmiSIFWhdBmIbj0i&lang=zh_CN
     @GET("v2/place?token=${MyApplication.TOKEN}&lang=zh_CN")
-    fun searchPlaces(@Query("query") query: String): Call<PlaceResponse>
+    // Retrofit 2.6.0+ 原生支持 协程挂起函数。无需如下写法
+    // fun searchPlaces(@Query("query") query: String): Call<PlaceResponse>
+    suspend fun searchPlaces(@Query("query") query: String): PlaceResponse
+
 }

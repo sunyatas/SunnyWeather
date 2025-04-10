@@ -17,12 +17,10 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private lateinit var viewmodel: PlaceViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         this.enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
-        viewmodel = ViewModelProvider(this)[PlaceViewModel::class.java]
         setContentView(binding.root)
         ViewCompat.setOnApplyWindowInsetsListener(
             findViewById(R.id.main)
@@ -32,32 +30,28 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewmodel.places.collect {
-                    val list = it.getOrNull()
-                    if (list != null) {
-                        for (place in list) {
-                            Log.d("flow天气", place.name)
-                        }
-                    }
-                }
-            }
-        }
-        // viewmodel.placeLiveData.observe(this) { result ->
-        //     val list = result.getOrNull()
-        //     if (list != null) {
-        //         for (place in list) {
-        //             Log.d("livedata天气", place.name)
+        // lifecycleScope.launch {
+        //     repeatOnLifecycle(Lifecycle.State.STARTED) {
+        //         viewmodel.places.collect { result ->
+        //             result.onSuccess {
+        //                 val list = result.getOrNull()
+        //                 if (list != null) {
+        //                     for (place in list) {
+        //                         Log.d("flow天气成功", place.name)
+        //                     }
+        //                 }
+        //             }
+        //             result.onFailure {
+        //                 Log.d("flow天气错误", it.message.toString())
+        //             }
+        //
         //         }
-        //     } else {
-        //         Log.d("livedata天气", "空")
         //     }
+        //
         // }
+        // viewmodel.search("上海")
 
-        binding.btnTest.setOnClickListener {
-            viewmodel.searchPlace("上海")
-        }
 
     }
+
 }

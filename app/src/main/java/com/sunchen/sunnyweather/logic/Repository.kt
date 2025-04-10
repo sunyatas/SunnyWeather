@@ -20,20 +20,21 @@ import retrofit2.http.Query
 
 object Repository {
 
-    fun searchPlaces(query: String) = liveData(Dispatchers.IO) {
-        val result = try {
-            val searchPlaces = SunnyWeatherNetwork.searchPlaces(query)
-            if (searchPlaces.status == "ok") {
-                val places = searchPlaces.places
-                Result.success(places)
-            } else {
-                Result.failure(RuntimeException("响应状态：${searchPlaces.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure<List<Place>>(e)
-        }
-        emit(result)
-    }
+    // livedata函数自动构建并返回一个LiveData对象，然后在它的代码块中提供一个挂起函数的上下文
+    // fun searchPlaces(query: String) = liveData(Dispatchers.IO) {
+    //     val result = try {
+    //         val searchPlaces = SunnyWeatherNetwork.searchPlaces(query)
+    //         if (searchPlaces.status == "ok") {
+    //             val places = searchPlaces.places
+    //             Result.success(places)
+    //         } else {
+    //             Result.failure(RuntimeException("响应状态：${searchPlaces.status}"))
+    //         }
+    //     } catch (e: Exception) {
+    //         Result.failure<List<Place>>(e)
+    //     }
+    //     emit(result)
+    // }
 
     fun searchPlacesFlow(placeName: String): Flow<Result<List<Place>>> {
         return flow {
@@ -43,14 +44,29 @@ object Repository {
                     val places = searchPlaces.places
                     Result.success(places)
                 } else {
-                    Result.failure(RuntimeException("响应状态：${searchPlaces.status}"))
+                    Result.failure(RuntimeException("响应错误，状态：${searchPlaces.status}"))
                 }
             } catch (e: Exception) {
-                Result.failure<List<Place>>(e)
+                Result.failure(e)
             }
             emit(result)
         }.flowOn(Dispatchers.IO)
-
-
     }
+
+
+    fun searchPlaces2(query: String): Flow<Result<List<Place>>> = flow {
+        val response = try {
+            SunnyWeatherNetwork.searchPlaces(query) // 挂起函数调用
+        } catch (e: Exception) {
+            emit(Result.failure(e)) // 网络异常
+            return@flow
+        }
+        if (response.status == "ok") {
+            emit(Result.success(response.places ?: emptyList())) // 处理空数据
+        } else {
+            emit(Result.failure(RuntimeException("响应状态：${response.status}")))
+        }
+    }.flowOn(Dispatchers.IO) // 确保整个 Flow 在 IO 线程执行
+
+
 }

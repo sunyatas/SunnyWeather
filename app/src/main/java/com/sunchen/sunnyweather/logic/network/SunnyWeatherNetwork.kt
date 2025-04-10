@@ -26,7 +26,10 @@ object SunnyWeatherNetwork {
     // 当外部调用searchPlaces时，Retrofit会立即发起网络请求，同时当前协程也会被阻塞住，
     // 直到服务器响应请求await函数将解析出来的数据模型返回，同事恢复当前协程，
     // searchPlaces()函数得到await函数的返回值后会将该数据 再返回到上一层
-    suspend fun searchPlaces(query: String) = placeService.searchPlaces(query).await()
+    // Retrofit 2.6.0+ 原生支持 协程挂起函数。无需如下写法
+    // suspend fun searchPlaces(query: String) = placeService.searchPlaces(query).await()
+
+    suspend fun searchPlaces(query: String) = placeService.searchPlaces(query)
 
     private suspend fun <T> Call<T>.await(): T {
         return suspendCoroutine { continuation ->
