@@ -6,6 +6,7 @@ import com.sunchen.sunnyweather.logic.model.WeatherModel
 import com.sunchen.sunnyweather.logic.network.SunnyWeatherNetwork
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +15,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.zip
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import retrofit2.http.Query
 
 /**
@@ -43,21 +46,14 @@ object Repository {
     //     emit(result)
     // }
 
-    fun searchPlacesFlow(placeName: String): Flow<Result<List<Place>>> {
-        return flow {
-            val result = try {
-                val searchPlaces = SunnyWeatherNetwork.searchPlaces(placeName)
-                if (searchPlaces.status == "ok") {
-                    val places = searchPlaces.places
-                    Result.success(places)
-                } else {
-                    Result.failure(RuntimeException("响应错误，状态：${searchPlaces.status}"))
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-            emit(result)
-        }.flowOn(Dispatchers.IO)
+    fun searchPlacesFlow(placeName: String) = fire {
+        val searchPlaces = SunnyWeatherNetwork.searchPlaces(placeName)
+        if (searchPlaces.status == "ok") {
+            val places = searchPlaces.places
+            Result.success(places)
+        } else {
+            Result.failure(RuntimeException("响应错误，状态：${searchPlaces.status}"))
+        }
     }
 
 
@@ -76,50 +72,41 @@ object Repository {
     }.flowOn(Dispatchers.IO) // 确保整个 Flow 在 IO 线程执行
 
 
-    fun refreshWeather(lng: String, lat: String) {
+    fun refreshWeather(lng: String, lat: String) = fire {
+        val (realTimeWeather, dailyWeather) = coroutineScope {
+            val deferredTimeWeather = async { SunnyWeatherNetwork.getRealTimeWeather(lng, lat) }
+            val deferredDailyWeather = async { SunnyWeatherNetwork.getDailyTimeWeather(lng, lat) }
+            val realTimeWeather = deferredTimeWeather.await()
+            val dailyWeather = deferredDailyWeather.await()
+            Pair(realTimeWeather, dailyWeather)
+        }
 
-        val flow: Flow<Result<WeatherModel>> = flow {
-            val result = try {
-                coroutineScope {
-                    val deferredRealtime = async {
-                        SunnyWeatherNetwork.getRealTimeWeather(lng, lat)
-                    }
-                    val deferredDaily = async {
-                        SunnyWeatherNetwork.getDailyTimeWeather(lng, lat)
-                    }
-                    val realtimeResponse = deferredRealtime.await()
-                    val dailyResponse = deferredDaily.await()
-                    if (realtimeResponse.status == "ok" && dailyResponse.status == "ok") {
-                        val weather = WeatherModel(
-                            realtimeResponse.result.realtime, dailyResponse.result.daily
-                        )
-                        Result.success(weather)
-                    } else {
-                        Result.failure(
-                            RuntimeException(
-                                "realtime response status is ${realtimeResponse.status} " + "daily response status is ${dailyResponse.status}"
-                            )
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                Result.failure<WeatherModel>(e)
-            }
-            emit(result)
-        }.flowOn(Dispatchers.IO)
-
-        // val ss = flow {
-        //     emit(SunnyWeatherNetwork.getRealTimeWeather(lng, lat))
-        // }
-        // val xx = flow { emit(SunnyWeatherNetwork.getDailyTimeWeather(lng, lat)) }
-        //
-        // ss.zip(xx) { realtimeResponse, dailyResponse ->
-        //     WeatherModel(realtimeResponse.result.realtime, dailyResponse.result.daily)
-        // }
+        if (realTimeWeather.status == "ok" && dailyWeather.status == "ok") {
+            val weatherModel = WeatherModel(
+                realTimeWeather.result.realtime, dailyWeather.result.daily
+            )
+            Result.success(weatherModel)
+        } else {
+            Result.failure(RuntimeException("API 响应错误: 实时天气状态=${realTimeWeather.status}, 每日天气状态=${dailyWeather.status}"))
+        }
     }
 
 
+    // 封装flow处理try/catch
+    private fun <T> fire(block: suspend () -> Result<T>): Flow<Result<T>> {
+        return flow<Result<T>> {
+            val result = try {
+                block()
+            } catch (e: Exception) {
+                Result.failure<T>(e)
+            }
+            emit(result)
+        }.flowOn(Dispatchers.IO)
+    }
+
 }
+
+
 
 
 
