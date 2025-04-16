@@ -59,6 +59,7 @@ class PlaceFragment : Fragment() {
                             viewModel.placeList.clear()
                             viewModel.placeList.addAll(it)
                             adapter.notifyDataSetChanged()
+                            Log.d("flow地理位置", "获取成功")
                         }
                     }
 

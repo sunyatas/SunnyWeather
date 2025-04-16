@@ -1,6 +1,8 @@
 package com.sunchen.sunnyweather.logic
 
+import android.util.Log
 import androidx.lifecycle.liveData
+import com.sunchen.sunnyweather.logic.dao.PlaceDao
 import com.sunchen.sunnyweather.logic.model.Place
 import com.sunchen.sunnyweather.logic.model.WeatherModel
 import com.sunchen.sunnyweather.logic.network.SunnyWeatherNetwork
@@ -19,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import retrofit2.http.Query
+import kotlin.coroutines.CoroutineContext
 
 /**
  * @CreateTime 2025-04-09 16:10
@@ -57,23 +60,9 @@ object Repository {
     }
 
 
-    fun searchPlaces2(query: String): Flow<Result<List<Place>>> = flow {
-        val response = try {
-            SunnyWeatherNetwork.searchPlaces(query) // 挂起函数调用
-        } catch (e: Exception) {
-            emit(Result.failure(e)) // 网络异常
-            return@flow
-        }
-        if (response.status == "ok") {
-            emit(Result.success(response.places ?: emptyList())) // 处理空数据
-        } else {
-            emit(Result.failure(RuntimeException("响应状态：${response.status}")))
-        }
-    }.flowOn(Dispatchers.IO) // 确保整个 Flow 在 IO 线程执行
-
-
     fun refreshWeather(lng: String, lat: String) = fire {
         val (realTimeWeather, dailyWeather) = coroutineScope {
+            Log.d("网络请求", "请求天气数据")
             val deferredTimeWeather = async { SunnyWeatherNetwork.getRealTimeWeather(lng, lat) }
             val deferredDailyWeather = async { SunnyWeatherNetwork.getDailyTimeWeather(lng, lat) }
             val realTimeWeather = deferredTimeWeather.await()
@@ -93,7 +82,9 @@ object Repository {
 
 
     // 封装flow处理try/catch
-    private fun <T> fire(block: suspend () -> Result<T>): Flow<Result<T>> {
+    private fun <T> fire(
+        coroutine: CoroutineContext = Dispatchers.IO, block: suspend () -> Result<T>
+    ): Flow<Result<T>> {
         return flow<Result<T>> {
             val result = try {
                 block()
@@ -101,7 +92,26 @@ object Repository {
                 Result.failure<T>(e)
             }
             emit(result)
-        }.flowOn(Dispatchers.IO)
+        }.flowOn(coroutine)
+    }
+
+    suspend fun savePlace(place: Place) {
+        withContext(Dispatchers.IO) {
+            PlaceDao.savePlace(place)
+        }
+
+    }
+
+    fun getPlace() = flow<Place> {
+        val place = withContext(Dispatchers.IO) {
+            PlaceDao.getPlace()
+        }
+        emit(place)
+    }
+
+
+    fun isPlaceSaved(): Boolean {
+        return PlaceDao.isPlaceSaved()
     }
 
 }
