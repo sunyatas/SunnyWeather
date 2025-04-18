@@ -12,6 +12,7 @@ import android.content.Context
  * @Description
  */
 
+
 class MyApplication : Application() {
 
     companion object {

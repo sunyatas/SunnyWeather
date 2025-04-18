@@ -17,6 +17,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.sunchen.sunnyweather.R
 import com.sunchen.sunnyweather.databinding.FragmentPlaceBinding
 import com.sunchen.sunnyweather.logic.model.Place
+import com.sunchen.sunnyweather.ui.weather.WeatherActivity
+import com.sunchen.sunnyweather.util.TAG
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 
 /**
@@ -32,7 +35,7 @@ class PlaceFragment : Fragment() {
     private lateinit var binding: FragmentPlaceBinding
     private lateinit var adapter: PlaceAdapter
 
-    private val viewModel by lazy {
+    val viewModel by lazy {
         ViewModelProvider(this)[PlaceViewModel::class.java]
     }
 
@@ -47,7 +50,7 @@ class PlaceFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        adapter = PlaceAdapter(this,viewModel.placeList)
+        adapter = PlaceAdapter(this, viewModel.placeList)
         binding.recyclerView.layoutManager = LinearLayoutManager(context)
         binding.recyclerView.adapter = adapter
 
@@ -55,16 +58,16 @@ class PlaceFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.places.collect { result ->
                     result.onSuccess {
-                        result.map { it ->
+                        result.map { placeList ->
                             viewModel.placeList.clear()
-                            viewModel.placeList.addAll(it)
+                            viewModel.placeList.addAll(placeList)
+                            // 更新
                             adapter.notifyDataSetChanged()
-                            Log.d("flow地理位置", "获取成功")
                         }
                     }
 
                     result.onFailure {
-                        Log.d("flow天气错误", it.message.toString())
+                        Log.d(TAG, it.message.toString())
                         Toast.makeText(context, it.message.toString(), Toast.LENGTH_SHORT)
                             .show()
                     }
@@ -74,7 +77,6 @@ class PlaceFragment : Fragment() {
         }
 
         viewModel.search("上海")
-
 
         binding.edSearch.addTextChangedListener { editable ->
             val content = editable.toString()
@@ -87,8 +89,26 @@ class PlaceFragment : Fragment() {
 
         }
 
+        val job = lifecycleScope.launch(start = CoroutineStart.LAZY) {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.getPlace()
+                    .collect { place ->
+                        this@PlaceFragment.context?.let {
+                            WeatherActivity.startWeatherWithPlace(
+                                it, place
+                            )
+                        }
+                        this@PlaceFragment.activity?.finish()
+                    }
+            }
+        }
 
+        //只有当有地址存储时，才开启订阅
+        if (viewModel.isPlaceSaved()) {
+            job.start()
+        } else {
+            job.cancel()
+        }
     }
-
 
 }

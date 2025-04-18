@@ -8,6 +8,7 @@ import com.sunchen.sunnyweather.logic.Repository
 import com.sunchen.sunnyweather.logic.model.Place
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,8 +30,8 @@ import kotlinx.coroutines.launch
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class PlaceViewModel : ViewModel() {
 
-
     private val queryFlow = MutableStateFlow("")
+
     val places: StateFlow<Result<List<Place>>> = queryFlow.debounce(300)
         .filter { it.isNotBlank() }
         .flatMapLatest { query ->
@@ -40,23 +41,25 @@ class PlaceViewModel : ViewModel() {
             viewModelScope, SharingStarted.WhileSubscribed(3000), Result.success(emptyList())
         )
 
+    // 供Adapter设置值
     val placeList = ArrayList<Place>()
 
+    // 触发搜索
     fun search(place: String) {
-        // searchLiveData.value = place
         queryFlow.value = place
     }
 
+    fun savePlace(place: Place) {
+        viewModelScope.launch {
+            Repository.savePlace(place)
+        }
+    }
 
-    // private val _places = MutableStateFlow<Result<List<Place>>>(Result.success(emptyList()))
-    // val places: StateFlow<Result<List<Place>>> = _places.asStateFlow()
-    //
-    // fun search(query: String) {
-    //     viewModelScope.launch {
-    //         Repository.searchPlacesFlow(query).collect { result ->
-    //             _places.value = result
-    //         }
-    //     }
-    // }
+    fun getPlace(): Flow<Place> {
+        return Repository.getPlace()
+    }
+
+    fun isPlaceSaved() = Repository.isPlaceSaved()
+
 
 }

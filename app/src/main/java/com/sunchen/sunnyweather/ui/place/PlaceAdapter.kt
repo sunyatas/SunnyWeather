@@ -21,7 +21,7 @@ import com.sunchen.sunnyweather.ui.weather.WeatherActivity
  */
 
 
-class PlaceAdapter(private val fragment: Fragment, private val placeList: List<Place>) :
+class PlaceAdapter(private val fragment: PlaceFragment, private val placeList: List<Place>) :
     RecyclerView.Adapter<PlaceAdapter.ViewHolder>() {
 
     inner class ViewHolder(val binding: ItemPlaceBinding) : RecyclerView.ViewHolder(binding.root)
@@ -32,14 +32,11 @@ class PlaceAdapter(private val fragment: Fragment, private val placeList: List<P
                 .inflate(R.layout.item_place, parent, false)
         )
         val viewHolder = ViewHolder(bind)
+        // item点击事件
         viewHolder.itemView.setOnClickListener {
             val place = placeList[viewHolder.bindingAdapterPosition]
-            val intent = Intent(parent.context, WeatherActivity::class.java).apply {
-                putExtra("location_lng", place.location.lng)
-                putExtra("location_lat", place.location.lat)
-                putExtra("location_name", place.name)
-            }
-            fragment.startActivity(intent)
+            fragment.viewModel.savePlace(place)
+            WeatherActivity.startWeatherWithPlace(parent.context, place)
             fragment.activity?.finish()
         }
 

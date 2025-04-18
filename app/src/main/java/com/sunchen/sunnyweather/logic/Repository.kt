@@ -6,6 +6,7 @@ import com.sunchen.sunnyweather.logic.dao.PlaceDao
 import com.sunchen.sunnyweather.logic.model.Place
 import com.sunchen.sunnyweather.logic.model.WeatherModel
 import com.sunchen.sunnyweather.logic.network.SunnyWeatherNetwork
+import com.sunchen.sunnyweather.util.TAG
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -59,10 +60,9 @@ object Repository {
         }
     }
 
-
     fun refreshWeather(lng: String, lat: String) = fire {
         val (realTimeWeather, dailyWeather) = coroutineScope {
-            Log.d("网络请求", "请求天气数据")
+            Log.d(TAG, "请求天气数据")
             val deferredTimeWeather = async { SunnyWeatherNetwork.getRealTimeWeather(lng, lat) }
             val deferredDailyWeather = async { SunnyWeatherNetwork.getDailyTimeWeather(lng, lat) }
             val realTimeWeather = deferredTimeWeather.await()
